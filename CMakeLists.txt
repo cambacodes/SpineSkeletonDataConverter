@@ -24,6 +24,8 @@ macro(add_spine_cpp version)
 endmacro()
 
 add_spine_c(21)
+add_spine_c(33)
+add_spine_c(34)
 add_spine_c(35)
 add_spine_c(36)
 add_spine_cpp(37)
@@ -40,6 +42,14 @@ add_executable(SpineSkeletonDataConverter
     "src/OrderConverter.cpp"
     "src/RotateTimelineConverter.cpp"
     "src/SpacingModeConverter.cpp"
+    "src/SkeletonData33BinaryReader.cpp"
+    "src/SkeletonData33BinaryWriter.cpp"
+    "src/SkeletonData33JsonReader.cpp"
+    "src/SkeletonData33JsonWriter.cpp"
+    "src/SkeletonData34BinaryReader.cpp"
+    "src/SkeletonData34BinaryWriter.cpp"
+    "src/SkeletonData34JsonReader.cpp"
+    "src/SkeletonData34JsonWriter.cpp"
     "src/SkeletonData35BinaryReader.cpp"
     "src/SkeletonData35BinaryWriter.cpp"
     "src/SkeletonData35JsonReader.cpp"
@@ -77,3 +87,15 @@ add_executable(SpineAtlasDowngrade
 )
 
 target_include_directories(SpineAtlasDowngrade PRIVATE "include")
+
+enable_testing()
+find_package(PythonInterp)
+if(PYTHONINTERP_FOUND)
+    add_test(
+        NAME legacy_spine_versions
+        COMMAND "${PYTHON_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_legacy_versions.py"
+            --converter "$<TARGET_FILE:SpineSkeletonDataConverter>"
+            --fixtures-root "${CMAKE_CURRENT_SOURCE_DIR}/data"
+    )
+endif()

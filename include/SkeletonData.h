@@ -568,6 +568,20 @@ std::string dumpJson(const Json&);
 std::string uint64ToBase64(uint64_t);
 uint64_t base64ToUint64(const std::string&);
 
+namespace spine33 {
+    SkeletonData readBinaryData(const Binary&);
+    Binary writeBinaryData(SkeletonData&);
+    SkeletonData readJsonData(const Json&);
+    Json writeJsonData(const SkeletonData&);
+}
+
+namespace spine34 {
+    SkeletonData readBinaryData(const Binary&);
+    Binary writeBinaryData(SkeletonData&);
+    SkeletonData readJsonData(const Json&);
+    Json writeJsonData(const SkeletonData&);
+}
+
 namespace spine35 {
     SkeletonData readBinaryData(const Binary&);
     Binary writeBinaryData(SkeletonData&);
