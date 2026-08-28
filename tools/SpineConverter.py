@@ -23,6 +23,14 @@ def locate_executable(name: str) -> Path:
 	)
 
 
+def source_suffix(path: Path) -> str:
+	name = path.name.lower()
+	for suffix in (".skel.bytes", ".atlas.txt", ".json", ".skel", ".atlas"):
+		if name.endswith(suffix):
+			return suffix
+	return path.suffix.lower()
+
+
 def determine_output_suffix(source_suffix: str, format_option: str) -> str:
 	source_suffix = source_suffix.lower()
 	if format_option == "same":
@@ -34,10 +42,14 @@ def determine_output_suffix(source_suffix: str, format_option: str) -> str:
 	if format_option == "other":
 		if source_suffix == ".json":
 			return ".skel"
-		if source_suffix == ".skel":
+		if source_suffix in {".skel", ".skel.bytes"}:
 			return ".json"
-		raise ValueError("--format other only applies to .json or .skel files")
+		raise ValueError("--format other only applies to .json, .skel, or .skel.bytes files")
 	raise ValueError(f"Unsupported format option: {format_option}")
+
+
+def replace_suffix(path: Path, old_suffix: str, new_suffix: str) -> Path:
+	return path.with_name(f"{path.name[:-len(old_suffix)]}{new_suffix}")
 
 
 def build_converter_command(executable: Path, input_path: Path, output_path: Path, version: str | None, remove_curve: bool) -> list[str]:
@@ -69,17 +81,17 @@ def process_files(args: argparse.Namespace) -> None:
 		if not path.is_file():
 			continue
 
-		suffix = path.suffix.lower()
-		if suffix not in {".json", ".skel", ".atlas"}:
+		suffix = source_suffix(path)
+		if suffix not in {".json", ".skel", ".skel.bytes", ".atlas", ".atlas.txt"}:
 			continue
 
 		relative_path = path.relative_to(input_dir)
 		destination_parent = (output_dir / relative_path).parent
 		destination_parent.mkdir(parents=True, exist_ok=True)
 
-		if suffix in {".json", ".skel"}:
+		if suffix in {".json", ".skel", ".skel.bytes"}:
 			output_suffix = determine_output_suffix(suffix, args.format)
-			destination_path = output_dir / relative_path.with_suffix(output_suffix)
+			destination_path = output_dir / replace_suffix(relative_path, suffix, output_suffix)
 			command = build_converter_command(
 				converter_exe,
 				path,
@@ -89,7 +101,7 @@ def process_files(args: argparse.Namespace) -> None:
 			)
 			print(f"[converter] {format_command(command)}")
 			subprocess.run(command, check=True)
-		else:  # .atlas
+		else:  # .atlas or .atlas.txt
 			command = build_atlas_command(atlas_exe, path, output_dir / relative_path.parent)
 			print(f"[atlas] {format_command(command)}")
 			subprocess.run(command, check=True)
@@ -108,7 +120,7 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
 		"--format",
 		choices=["same", "json", "skel", "other"],
 		default="same",
-		help="Output format selection rule for .json/.skel files",
+		help="Output format selection rule for .json/.skel/.skel.bytes files",
 	)
 	parser.add_argument(
 		"--remove-curve",

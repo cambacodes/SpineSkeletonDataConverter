@@ -1,3 +1,5 @@
 .vscode
 build
 test_examples
+__pycache__/
+*.py[cod]

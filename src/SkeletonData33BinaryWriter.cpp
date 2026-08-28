@@ -19,6 +19,36 @@ bool isSupportedBoneTimeline(const std::string& name) {
     return it != boneTimelineTypeMap.end() && it->second != BONE_INHERIT;
 }
 
+size_t countSupportedSkinSlots(const Skin& skin) {
+    return std::count_if(skin.attachments.begin(), skin.attachments.end(), [](const auto& slot) {
+        return std::any_of(slot.second.begin(), slot.second.end(), [](const auto& attachment) {
+            return isSupportedAttachment(attachment.second);
+        });
+    });
+}
+
+size_t findSerializedSkinIndex(const SkeletonData& skeletonData, const std::string& skinName) {
+    size_t index = 0;
+    const auto defaultSkin = std::find_if(skeletonData.skins.begin(), skeletonData.skins.end(), [](const Skin& skin) {
+        return skin.name == "default";
+    });
+
+    if (defaultSkin != skeletonData.skins.end() && countSupportedSkinSlots(*defaultSkin) > 0) {
+        if (skinName == "default") return index;
+        index++;
+    } else if (skinName == "default") {
+        throw std::runtime_error("Cannot write deform timeline for an empty default skin");
+    }
+
+    for (const Skin& skin : skeletonData.skins) {
+        if (skin.name == "default") continue;
+        if (skin.name == skinName) return index;
+        index++;
+    }
+
+    throw std::runtime_error("Deform timeline references unknown skin: " + skinName);
+}
+
 void writeFloatArray(Binary& binary, const std::vector<float>& array) {
     for (float value : array) {
         writeFloat(binary, value);
@@ -73,13 +103,7 @@ void writeTimeline(Binary& binary, const Timeline& timeline, int valueNum) {
 }
 
 void writeSkin(Binary& binary, const Skin& skin, const SkeletonData& skeletonData, bool defaultSkin) {
-    size_t slotCount = 0;
-    for (const auto& [slotName, slotMap] : skin.attachments) {
-        const size_t attachmentCount = std::count_if(slotMap.begin(), slotMap.end(), [](const auto& entry) {
-            return isSupportedAttachment(entry.second);
-        });
-        if (attachmentCount > 0) slotCount++;
-    }
+    const size_t slotCount = countSupportedSkinSlots(skin);
     if (defaultSkin) {
         writeVarint(binary, slotCount, true); 
     } else {
@@ -412,14 +436,7 @@ void writeAnimation(Binary& binary, const Animation& animation, const SkeletonDa
     for (const auto& [skinName, skinMap] : animation.attachments) {
         const size_t slotCount = deformSlotCount(skinMap);
         if (slotCount == 0) continue;
-        int skinIndex = 0;
-        for (size_t i = 0; i < skeletonData.skins.size(); i++) {
-            if (skeletonData.skins[i].name == skinName) {
-                skinIndex = i;
-                break;
-            }
-        }
-        writeVarint(binary, skinIndex, true);
+        writeVarint(binary, findSerializedSkinIndex(skeletonData, skinName), true);
         writeVarint(binary, slotCount, true);
         for (const auto& [slotName, slotMap] : skinMap) {
             const size_t attachmentCount = deformCount(slotMap);

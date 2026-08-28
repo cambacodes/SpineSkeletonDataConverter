@@ -98,4 +98,9 @@ if(PYTHONINTERP_FOUND)
             --converter "$<TARGET_FILE:SpineSkeletonDataConverter>"
             --fixtures-root "${CMAKE_CURRENT_SOURCE_DIR}/data"
     )
+    add_test(
+        NAME batch_converter_helpers
+        COMMAND "${PYTHON_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_spine_converter_tool.py"
+    )
 endif()

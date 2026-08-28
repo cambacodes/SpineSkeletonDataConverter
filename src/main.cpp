@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -34,8 +36,20 @@ struct ConversionOptions {
     SpineVersion outputVersion = SpineVersion::Invalid;
     std::string outputVersionString; // 完整的版本号字符串，如 "4.2.11"
     bool help = false;
+    bool argumentError = false;
     bool removeCurve = false;
 };
+
+FileFormat detectFileFormat(const std::string& filePath) {
+    std::string filename = std::filesystem::path(filePath).filename().string();
+    std::transform(filename.begin(), filename.end(), filename.begin(), [](unsigned char character) {
+        return static_cast<char>(std::tolower(character));
+    });
+
+    if (filename.ends_with(".json")) return FileFormat::Json;
+    if (filename.ends_with(".skel") || filename.ends_with(".skel.bytes")) return FileFormat::Skel;
+    return FileFormat::Unknown;
+}
 
 bool aboveOrEqualVersion(SpineVersion version, SpineVersion target) {
     return static_cast<int>(version) >= static_cast<int>(target);
@@ -471,7 +485,8 @@ void printUsage(const char* programName) {
     std::cout << "Usage: " << programName << " <input_file> <output_file> [options]\n\n";
     std::cout << "Supported file formats:\n";
     std::cout << "  .json       Spine JSON format\n";
-    std::cout << "  .skel       Spine binary (SKEL) format\n\n";
+    std::cout << "  .skel       Spine binary (SKEL) format\n";
+    std::cout << "  .skel.bytes Spine binary with an engine-style compound extension\n\n";
     std::cout << "Options:\n";
     std::cout << "  -v          Output version (must be complete: x.y.z format)\n";
     std::cout << "  --remove-curve  Strip animation curves instead of converting between formats\n";
@@ -491,6 +506,7 @@ ConversionOptions parseArguments(int argc, char* argv[]) {
     
     if (argc < 3) {
         options.help = true;
+        options.argumentError = argc > 1 && std::string(argv[1]) != "--help";
         return options;
     }
     
@@ -498,28 +514,24 @@ ConversionOptions parseArguments(int argc, char* argv[]) {
     options.outputFile = argv[2];
     
     // 自动检测文件格式
-    std::string inputExt = std::filesystem::path(options.inputFile).extension().string();
-    std::string outputExt = std::filesystem::path(options.outputFile).extension().string();
-    
-    if (inputExt == ".json") {
-        options.inputFormat = FileFormat::Json;
-    } else if (inputExt == ".skel") {
-        options.inputFormat = FileFormat::Skel;
-    } else {
+    options.inputFormat = detectFileFormat(options.inputFile);
+    options.outputFormat = detectFileFormat(options.outputFile);
+
+    if (options.inputFormat == FileFormat::Unknown) {
+        const std::string inputExt = std::filesystem::path(options.inputFile).extension().string();
         std::cerr << "Error: Unsupported input file extension: " << inputExt << "\n";
-        std::cerr << "Supported extensions: .json, .skel\n";
+        std::cerr << "Supported extensions: .json, .skel, .skel.bytes\n";
         options.help = true;
+        options.argumentError = true;
         return options;
     }
-    
-    if (outputExt == ".json") {
-        options.outputFormat = FileFormat::Json;
-    } else if (outputExt == ".skel") {
-        options.outputFormat = FileFormat::Skel;
-    } else {
+
+    if (options.outputFormat == FileFormat::Unknown) {
+        const std::string outputExt = std::filesystem::path(options.outputFile).extension().string();
         std::cerr << "Error: Unsupported output file extension: " << outputExt << "\n";
-        std::cerr << "Supported extensions: .json, .skel\n";
+        std::cerr << "Supported extensions: .json, .skel, .skel.bytes\n";
         options.help = true;
+        options.argumentError = true;
         return options;
     }
     
@@ -536,17 +548,21 @@ ConversionOptions parseArguments(int argc, char* argv[]) {
                     std::cerr << "Please specify complete version number (e.g., 3.7.94, 4.2.11)\n";
                     std::cerr << "Supported major versions: 3.3.x, 3.4.x, 3.5.x, 3.6.x, 3.7.x, 3.8.x, 4.0.x, 4.1.x, 4.2.x\n";
                     options.help = true;
+                    options.argumentError = true;
                 }
             } else {
                 std::cerr << "Error: -v requires a version argument\n";
                 options.help = true;
+                options.argumentError = true;
             }
         } else if (arg == "--help") {
             options.help = true;
         } else if (arg == "--remove-curve") {
             options.removeCurve = true;
         } else {
-            std::cerr << "Warning: Unknown option: " << arg << "\n";
+            std::cerr << "Error: Unknown option: " << arg << "\n";
+            options.help = true;
+            options.argumentError = true;
         }
     }
     
@@ -558,7 +574,7 @@ int main(int argc, char* argv[]) {
     
     if (options.help) {
         printUsage(argv[0]);
-        return 0;
+        return options.argumentError ? 1 : 0;
     }
     
     // Validate input file exists

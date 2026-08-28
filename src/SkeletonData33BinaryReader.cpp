@@ -65,11 +65,12 @@ Timeline readTimeline(DataInput* input, int frameCount, int valueNum) {
     return timeline;
 }
 
-Skin readSkin(DataInput* input, bool defaultSkin, SkeletonData* skeletonData) {
+std::optional<Skin> readSkin(DataInput* input, bool defaultSkin, SkeletonData* skeletonData) {
     Skin skin; 
     int slotCount = 0; 
     if (defaultSkin) {
         slotCount = readVarint(input, true);
+        if (slotCount == 0) return std::nullopt;
         skin.name = "default";
     } else {
         skin.name = readString(input).value();
@@ -474,10 +475,11 @@ SkeletonData readBinaryData(const Binary& binary) {
     }
 
     /* Skins */
-    skeletonData.skins.push_back(readSkin(&input, true, &skeletonData));
+    const auto defaultSkin = readSkin(&input, true, &skeletonData);
+    if (defaultSkin) skeletonData.skins.push_back(*defaultSkin);
     int skinCount = readVarint(&input, true);
     for (int i = 0; i < skinCount; i++) {
-        skeletonData.skins.push_back(readSkin(&input, false, &skeletonData));
+        skeletonData.skins.push_back(readSkin(&input, false, &skeletonData).value());
     }
 
     /* Events */

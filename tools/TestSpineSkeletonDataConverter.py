@@ -71,7 +71,11 @@ class SpineConverter:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             
             if result.returncode == 0:
-                return True
+                output_path = Path(output_file)
+                if output_path.is_file() and output_path.stat().st_size > 0:
+                    return True
+                print(f"Error converting {input_file}: converter returned success without creating {output_file}")
+                return False
             else:
                 print(f"Error converting {input_file}: {result.stderr}")
                 return False

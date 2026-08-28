@@ -49,6 +49,9 @@ SpineSkeletonDataConverter.exe input.skel output.json
 # The tool auto-detects file formats from extensions
 SpineSkeletonDataConverter.exe input.json output.skel
 
+# Engine-style compound binary extensions are also supported
+SpineSkeletonDataConverter.exe input.skel.bytes output.json
+
 # Cross-version conversion (convert 3.7 file to 4.2 format)
 SpineSkeletonDataConverter.exe input37.json output42.json -v 4.2.11
 
@@ -58,6 +61,7 @@ SpineSkeletonDataConverter.exe new.skel old.json -v 3.8.99
 # Supported file formats:
 #   .json       Spine JSON format
 #   .skel       Spine binary (SKEL) format
+#   .skel.bytes Spine binary with an engine-style compound extension
 
 # Options:
 #   -v              Output version (must be complete: x.y.z format)
@@ -108,7 +112,8 @@ python tools/SpineConverter.py <input_dir> <output_dir> \
 - `-v` overrides the target skeleton version (defaults to each file's original version).
 - `--format` controls output formats for `.json`/`.skel` files (`same` keeps the original format, `json`/`skel` force a specific format, and `other` swaps between the two).
 - `--remove-curve` forwards to the native converter, stripping animation curves instead of translating them when converting between 3.x and 4.x.
-- `.atlas` files are always downgraded through `SpineAtlasDowngrade.exe`.
+- `.atlas` and `.atlas.txt` files are always downgraded through `SpineAtlasDowngrade.exe`.
+- `.skel.bytes` files are treated as Spine binary input and retain their compound suffix with `--format same`.
 
 ## 🧪 Testing
 
