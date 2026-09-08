@@ -568,6 +568,14 @@ std::string dumpJson(const Json&);
 std::string uint64ToBase64(uint64_t);
 uint64_t base64ToUint64(const std::string&);
 
+// Spine 3.3 and 3.4 share the same data formats.
+namespace spine34 {
+    SkeletonData readBinaryData(const Binary&);
+    Binary writeBinaryData(SkeletonData&);
+    SkeletonData readJsonData(const Json&);
+    Json writeJsonData(const SkeletonData&);
+}
+
 namespace spine35 {
     SkeletonData readBinaryData(const Binary&);
     Binary writeBinaryData(SkeletonData&);
@@ -617,6 +625,7 @@ void convertCurve3xTo4x(SkeletonData& skeleton);
 void convertCurve4xTo3x(SkeletonData& skeleton);
 void removeCurve(SkeletonData& skeleton);
 void convertOrder42ToBelow(SkeletonData& skeleton);
+void convertOrder34ToAbove(SkeletonData& skeleton);
 void convertSpacingMode4xTo3x(SkeletonData& skeleton);
 void convertRotateTimeline3xTo4x(SkeletonData& skeleton);
 void convertRotateTimeline4xTo3x(SkeletonData& skeleton);

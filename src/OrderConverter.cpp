@@ -1,5 +1,29 @@
 #include "SkeletonData.h"
 
+void convertOrder34ToAbove(SkeletonData& skeleton) {
+    // Older formats apply IK by bone depth (later entries first on ties),
+    // then paths, then transform constraints. Newer formats need explicit orders.
+    std::map<std::string, size_t> depths;
+    for (const auto& bone : skeleton.bones)
+        depths[bone.name.value()] = bone.parent ? depths.at(*bone.parent) + 1 : 0;
+
+    std::vector<size_t> ikOrder;
+    for (size_t i = 0; i < skeleton.ikConstraints.size(); i++)
+        ikOrder.push_back(i);
+    std::sort(ikOrder.begin(), ikOrder.end(), [&](size_t a, size_t b) {
+        size_t depthA = depths.at(skeleton.ikConstraints[a].bones.at(0));
+        size_t depthB = depths.at(skeleton.ikConstraints[b].bones.at(0));
+        return depthA != depthB ? depthA < depthB : a > b;
+    });
+    size_t order = 0;
+    for (size_t index : ikOrder)
+        skeleton.ikConstraints[index].order = order++;
+    for (auto& path : skeleton.pathConstraints)
+        path.order = order++;
+    for (auto& transform : skeleton.transformConstraints)
+        transform.order = order++;
+}
+
 void convertOrder42ToBelow(SkeletonData& skeleton) {
     std::vector<size_t> orders; 
     for (auto& ik : skeleton.ikConstraints)
